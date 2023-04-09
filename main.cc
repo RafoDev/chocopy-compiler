@@ -7,7 +7,7 @@
 #include <iterator>
 using namespace std;
 
-string identifiersReg = "[a-z|A-Z][a-z|A-Z|0-9|_]*";
+regex identifiersReg("[a-z|A-Z][a-z|A-Z|0-9|_]*");
 // struct tokens{
 
 // };
@@ -61,13 +61,15 @@ string parseIdentifier(string &line, int &pointer, int endLine)
 {
     string identifier = "";
     char currChar = peekChar(line, pointer);
-
-    while ((pointer < endLine) && !(int(currChar) == 32 || int(currChar) == 9))
+    string currString(1, currChar);
+    while ((pointer < endLine) && !(int(currChar) == 32 || int(currChar) == 9) && (regex_match(currString, identifiersReg) || currChar == '_'))
     {
+        // cout << regex_match(currString, identifiersReg) << " " << currString;
         identifier += currChar;
         // cout << currChar << ' ' << int(currChar) << "\n";
         pointer++;
         currChar = peekChar(line, pointer);
+        currString.assign(currChar, currChar + 1);
     }
     return identifier;
 }
@@ -77,7 +79,7 @@ void parse(string filename)
     fstream file;
     file.open(filename, ios::in);
     int lineNumber = 1;
-    cout << "INFO SCAN - Start scanning...";
+    cout << "INFO SCAN - Start scanning...\n";
 
     if (file.is_open())
     {
@@ -98,8 +100,10 @@ void parse(string filename)
             while (pointer < endLine)
             {
                 string identifier = parseIdentifier(line, pointer, endLine);
+                if (identifier.length())
+                    showMessage("DEBUG", "ID", identifier, lineNumber, pointer);
+
                 char currChar = peekChar(line, pointer);
-                showMessage("DEBUG", "ID", identifier, lineNumber, pointer);
                 // cout << currChar << ' ' << int(currChar) << "\n";
                 pointer++;
             }
