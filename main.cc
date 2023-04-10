@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <regex>
 #include <fstream>
-#include <stack>
-#include <map>
 #include <iterator>
 #include <vector>
 #include <queue>
@@ -13,11 +11,12 @@ using namespace std;
 
 char currChar = ' ';
 
+// todo: add more types
 vector<string> keywords = {
-		"False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"};
+		"False", "None", "True", "and", "as", "assert", "async", "await", "bool", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "int", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"};
 vector<string> operators = {
 		"+", "-", "*", "%", "/", "<",
-		">", "<=", ">=", "=="};
+		">", "<=", ">=", "==", "!="};
 vector<string> delimiters = {
 		")",
 		"(",
@@ -28,12 +27,10 @@ vector<string> delimiters = {
 		";",
 		"=",
 		":",
-		"->",
-		"=>",
-};
-vector<string> comments = {"//", "#"};
+		"->"};
 
 regex idRegexp("[a-z|A-Z][a-z|A-Z|0-9|_]*");
+regex numberRegexp("[0-9]+");
 
 struct MToken
 {
@@ -85,34 +82,81 @@ MToken getToken(string &line, int &pointer, int endLine)
 	string tokenValue = "";
 	string charStr(1, currChar);
 
-	while (
-			(pointer < endLine) &&
-			!(int(currChar) == 32 || int(currChar) == 9) &&
-			(find(operators.begin(), operators.end(), charStr) == operators.end()) &&
-			(find(delimiters.begin(), delimiters.end(), charStr) == delimiters.end()))
+	if (currChar == '#')
 	{
-
-		tokenValue += currChar;
-		currChar = getChar(line, pointer);
-		charStr.assign(1, currChar);
+		token.type = "COMMENT";
+		token.value = "";
+		return token;
 	}
 
-	token.value = tokenValue;
-	token.type = "ANY";
-	if (regex_match(tokenValue, idRegexp))
-		token.type = "ID";
-	else
-		token.type = "KEY";
+	if (find(operators.begin(), operators.end(), charStr) != operators.end())
+	{
+		token.value += currChar;
+		token.type = "OP";
+		char nextChar = getChar(line, pointer);
 
-	// while ((pointer < endLine) && !(int(currChar) == 32 || int(currChar) == 9) && (regex_match(currString, identifiersReg) || currChar == '_'))
-	// {
-	// 	// cout << regex_match(currString, identifiersReg) << " " << currString;
-	// 	identifier += currChar;
-	// 	// cout << currChar << ' ' << int(currChar) << "\n";
-	// 	pointer++;
-	// 	currChar = peekChar(line, pointer);
-	// 	currString.assign(currChar, currChar + 1);
-	// }
+		if (currChar == '-' && nextChar == '>')
+		{
+			token.value += nextChar;
+			token.type = "DEL";
+		}
+		else if ((currChar == '>' && nextChar == '=') || (currChar == '<' && nextChar == '='))
+		{
+			token.value += nextChar;
+		}
+		else
+		{
+			token.type = "OP";
+		}
+		currChar = getChar(line, pointer);
+	}
+	else if (find(delimiters.begin(), delimiters.end(), charStr) != delimiters.end())
+	{
+		// = ==
+		token.value += currChar;
+		char nextChar = getChar(line, pointer);
+
+		if (currChar == '=' && nextChar == '=')
+		{
+			token.value += nextChar;
+			token.type = "OP";
+		}
+		else
+		{
+			token.type = "DEL";
+		}
+		currChar = nextChar;
+	}
+	else
+	{
+		while (
+				(pointer < endLine) &&
+				!(int(currChar) == 32 || int(currChar) == 9) &&
+				(find(operators.begin(), operators.end(), charStr) == operators.end()) &&
+				(find(delimiters.begin(), delimiters.end(), charStr) == delimiters.end()))
+		{
+
+			tokenValue += currChar;
+			currChar = getChar(line, pointer);
+			charStr.assign(1, currChar);
+		}
+
+		token.value = tokenValue;
+		if (regex_match(tokenValue, idRegexp))
+			token.type = "ID";
+		if (find(keywords.begin(), keywords.end(), tokenValue) != keywords.end())
+			token.type = "KEY";
+		if(tokenValue[0] == '"' && tokenValue[tokenValue.length()-1] == '"'){
+			token.type = "LITSTR";
+			// todo: error when \o (NOT RECOGNIZED)
+		}
+		if(regex_match(tokenValue, numberRegexp)){
+			token.type = "LITNUM";
+			// todo: error when 0323 (LEXICAL ERROR)
+			// todo: error when token is a int number bigger than 2147483647)
+		}
+		// todo: implement else{}, when tokenValue is a not supported token 
+	}
 	return token;
 }
 
@@ -131,6 +175,7 @@ void scan(string filename)
 
 		while (getline(file, line))
 		{
+			MToken currToken;
 			int pointer = -1;
 			int endLine = line.length();
 			int currInden = computeIndent(line, pointer, endLine);
@@ -148,17 +193,25 @@ void scan(string filename)
 
 			while (pointer < endLine)
 			{
-				MToken currToken = getToken(line, pointer, endLine);
-				// if (identifier.length())
-				showMessage("DEBUG", currToken.type, currToken.value, lineNumber, pointer);
+				while (currChar == ' ')
+					currChar = getChar(line, pointer);
 
-				// char currChar = peekChar(line, pointer);
-				// cout << currChar << ' ' << int(currChar) << "\n";
+				currToken = getToken(line, pointer, endLine);
 
-				currChar = getChar(line, pointer);
+				if (currToken.type == "COMMENT")
+				{
+					pointer = endLine;
+				}
+				else
+				{
+					showMessage("DEBUG", currToken.type, currToken.value, lineNumber, pointer - currToken.value.length() + 1);
+				}
 			}
-			cout << "------------NEWLINE----------------\n";
-			// showMessage("DEBUG", "NEWLINE", "", lineNumber, pointer);
+			if (currToken.type != "COMMENT")
+			{
+				showMessage("DEBUG", "NEWLINE", "", lineNumber, pointer + 1);
+			}
+
 			lineNumber++;
 		}
 	}
