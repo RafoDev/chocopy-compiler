@@ -5,9 +5,42 @@
 #include <stack>
 #include <map>
 #include <iterator>
+#include <vector>
+#include <queue>
+
 using namespace std;
 
-regex identifiersReg("[a-z|A-Z][a-z|A-Z|0-9|_]*");
+char currChar = ' ';
+
+struct Tokens
+{
+    string identifiersRegExp;
+    vector<string> operators;
+    map<string, string> delimiters;
+    Tokens()
+    {
+        operators = {
+            "+", "-", "*", "%",
+            "<", ">", "<=", ">=", "==", "=", ":"};
+        // delimiters["("] = "OPEN_PAR"
+    }
+};
+// regex identifiersReg("[a-z|A-Z][a-z|A-Z|0-9|_]*");
+// vector<string> operators = ;
+// map<string, string> delimiters;
+// delimiters["("] = "OPEN_PAR";
+// delimiters[")"] = "CLOSE_PAR";
+
+/*
+Token categories
+    Line structure
+    Identifiers
+    Keywords
+    Literals
+    Operators
+    Delimiters
+*/
+
 // struct tokens{
 
 // };
@@ -45,34 +78,33 @@ char peekChar(string &line, int pointer)
 int computeIndent(string &line, int &pointer, int endLine)
 {
     int indent = 0;
-    char currChar = peekChar(line, pointer);
+    currChar = getChar(line, pointer);
 
     while ((pointer < endLine) && (int(currChar) == 32 || int(currChar) == 9))
     {
-        // cout << currChar << ' ' << int(currChar) << "\n";
-        pointer++;
+        currChar = getChar(line, pointer);
         indent++;
-        currChar = peekChar(line, pointer);
     }
+
     return indent;
 }
 
-string parseIdentifier(string &line, int &pointer, int endLine)
-{
-    string identifier = "";
-    char currChar = peekChar(line, pointer);
-    string currString(1, currChar);
-    while ((pointer < endLine) && !(int(currChar) == 32 || int(currChar) == 9) && (regex_match(currString, identifiersReg) || currChar == '_'))
-    {
-        // cout << regex_match(currString, identifiersReg) << " " << currString;
-        identifier += currChar;
-        // cout << currChar << ' ' << int(currChar) << "\n";
-        pointer++;
-        currChar = peekChar(line, pointer);
-        currString.assign(currChar, currChar + 1);
-    }
-    return identifier;
-}
+// string parseIdentifier(string &line, int &pointer, int endLine)
+// {
+//     string identifier = "";
+//     char currChar = peekChar(line, pointer);
+//     string currString(1, currChar);
+//     while ((pointer < endLine) && !(int(currChar) == 32 || int(currChar) == 9) && (regex_match(currString, identifiersReg) || currChar == '_'))
+//     {
+//         // cout << regex_match(currString, identifiersReg) << " " << currString;
+//         identifier += currChar;
+//         // cout << currChar << ' ' << int(currChar) << "\n";
+//         pointer++;
+//         currChar = peekChar(line, pointer);
+//         currString.assign(currChar, currChar + 1);
+//     }
+//     return identifier;
+// }
 
 void parse(string filename)
 {
@@ -84,30 +116,38 @@ void parse(string filename)
     if (file.is_open())
     {
         string line;
-        stack<int> indentStack;
+        priority_queue<int> indentStack;
         indentStack.push(0);
 
         while (getline(file, line))
         {
             int pointer = -1;
             int endLine = line.length();
-            int inden = computeIndent(line, pointer, endLine);
-            if (inden != indentStack.top())
-            {
-                indentStack.push(inden);
-                showMessage("DEBUG", "IDENT", "", lineNumber, pointer);
-            }
-            while (pointer < endLine)
-            {
-                string identifier = parseIdentifier(line, pointer, endLine);
-                if (identifier.length())
-                    showMessage("DEBUG", "ID", identifier, lineNumber, pointer);
+            int currInden = computeIndent(line, pointer, endLine);
 
-                char currChar = peekChar(line, pointer);
-                // cout << currChar << ' ' << int(currChar) << "\n";
-                pointer++;
+            if (currInden > indentStack.top())
+            {
+                indentStack.push(currInden);
+                showMessage("DEBUG", "INDENT", "", lineNumber, pointer / 4);
             }
+            while (currInden < indentStack.top())
+            {
+                indentStack.pop();
+                showMessage("DEBUG", "DEDENT", "", lineNumber, pointer / 4);
+            }
+
+            // while (pointer < endLine)
+            // {
+            //     string identifier = parseIdentifier(line, pointer, endLine);
+            //     // if (identifier.length())
+            //     showMessage("DEBUG", "ID", identifier, lineNumber, pointer);
+
+            //     char currChar = peekChar(line, pointer);
+            //     // cout << currChar << ' ' << int(currChar) << "\n";
+            //     pointer++;
+            // }
             cout << "------------NEWLINE----------------\n";
+            // showMessage("DEBUG", "NEWLINE", "", lineNumber, pointer);
             lineNumber++;
         }
     }
