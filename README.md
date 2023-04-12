@@ -50,8 +50,20 @@ Se compila y ejecuta el código con:
 
 ```bash
 make
-make test #o con ./main test.py
+make test #o con ./main.exe test.py
 ```
+
+Tambien se puede compilar usando CMake con:
+
+```bash
+cmake -S . -B build -G "Unix Makefiles"
+cd build
+make
+./main.exe ../test.py
+./main.exe ../test1.py
+./main.exe ../test2.py
+```
+
 
 Resultado:
 ```
