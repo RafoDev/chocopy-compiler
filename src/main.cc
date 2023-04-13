@@ -32,6 +32,8 @@ vector<string> delimiters = {
 regex idRegexp("[a-z|A-Z][a-z|A-Z|0-9|_]*");
 regex numberRegexp("[0-9]+");
 
+int errorCounter = 0 ;
+
 struct MToken
 {
 	string type;
@@ -146,14 +148,50 @@ MToken getToken(string &line, int &pointer, int endLine)
 			token.type = "ID";
 		if (find(keywords.begin(), keywords.end(), tokenValue) != keywords.end())
 			token.type = "KEY";
-		if(tokenValue[0] == '"' && tokenValue[tokenValue.length()-1] == '"'){
+		if(tokenValue[0] == '"'){
 			token.type = "LITSTR";
 			// todo: error when \o (NOT RECOGNIZED)
+			tokenValue = line.substr( line.find('\"') , line.size()-1);
+			// cout << "TokenValue: " << tokenValue << endl;
+			// cout << "new token-" << tokenValue << "-\n";
+
+			for(int i = line.find('\"')+ 1 ; i < tokenValue.size() - 1; i++ ){
+				if(tokenValue[i] == '\"'){
+					if(tokenValue[i-1] != '\\' )
+						// cout << "reportar error 1\n" ;
+						cout << "You need to add the character \\ before \"\n";
+						errorCounter++;
+				}
+				if(tokenValue[i] == '\\'){
+					if(tokenValue[i+1] != '\"' ){
+						// cout << "reportar error 2\n" ;
+						cout << "ERROR: "<< tokenValue[i] << tokenValue[i+1] << " not recognized\n";
+						errorCounter++;
+						i++;
+					}
+				}
+			}
+
+			token.value = tokenValue;
+			pointer = line.size();
+
 		}
 		if(regex_match(tokenValue, numberRegexp)){
 			token.type = "LITNUM";
+			// cout << "TokenValue: " << tokenValue << endl;
 			// todo: error when 0323 (LEXICAL ERROR)
+			if( tokenValue[0] == '0' && tokenValue.size() > 1 ){
+				cout << "LEXICAL ERROR\n";
+				cout << "Remove the 0' : " << tokenValue << '\n';
+				errorCounter++;
+			}
 			// todo: error when token is a int number bigger than 2147483647)
+			int max = 2147483647;
+			if( stol(tokenValue) > max){
+				cout << "LEXICAL ERROR\n";
+				cout << "out of range" << tokenValue << '\n';
+				errorCounter++;
+			}
 		}
 		// todo: implement else{}, when tokenValue is a not supported token 
 	}
@@ -214,7 +252,7 @@ void scan(string filename)
 
 			lineNumber++;
 		}
-		cout << "INFO SCAN - Completed with 0 errors\n";
+		cout << "INFO SCAN - Completed with " << errorCounter <<" errors\n";
 	}
 
 	file.close();
