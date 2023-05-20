@@ -150,21 +150,24 @@ MToken getToken(string &line, int &pointer, int endLine)
 			token.type = "KEY";
 		if(tokenValue[0] == '"'){
 			token.type = "LITSTR";
-			// todo: error when \o (NOT RECOGNIZED)
-			tokenValue = line.substr( line.find('\"') , line.size()-1);
-			// cout << "TokenValue: " << tokenValue << endl;
-			// cout << "new token-" << tokenValue << "-\n";
+			tokenValue = "\"";
+
+			bool fin = true;
+			for(int i = 1 ; fin && i < line.size() ; i++ ){
+				tokenValue += line[i];
+				if(tokenValue[i] == '\"' && tokenValue[i-1] != '\\'){
+					fin = false;
+				}
+			}
 
 			for(int i = line.find('\"')+ 1 ; i < tokenValue.size() - 1; i++ ){
 				if(tokenValue[i] == '\"'){
 					if(tokenValue[i-1] != '\\' )
-						// cout << "reportar error 1\n" ;
 						cout << "You need to add the character \\ before \"\n";
 						errorCounter++;
 				}
 				if(tokenValue[i] == '\\'){
 					if(tokenValue[i+1] != '\"' ){
-						// cout << "reportar error 2\n" ;
 						cout << "ERROR: "<< tokenValue[i] << tokenValue[i+1] << " not recognized\n";
 						errorCounter++;
 						i++;
@@ -178,14 +181,11 @@ MToken getToken(string &line, int &pointer, int endLine)
 		}
 		if(regex_match(tokenValue, numberRegexp)){
 			token.type = "LITNUM";
-			// cout << "TokenValue: " << tokenValue << endl;
-			// todo: error when 0323 (LEXICAL ERROR)
 			if( tokenValue[0] == '0' && tokenValue.size() > 1 ){
 				cout << "LEXICAL ERROR\n";
 				cout << "Remove the 0' : " << tokenValue << '\n';
 				errorCounter++;
 			}
-			// todo: error when token is a int number bigger than 2147483647)
 			int max = 2147483647;
 			if( stol(tokenValue) > max){
 				cout << "LEXICAL ERROR\n";
