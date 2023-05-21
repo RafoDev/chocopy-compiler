@@ -137,8 +137,6 @@ MToken getToken(string &line, int &pointer, int endLine)
 	{
 		while (
 			(pointer < endLine) &&
-			// !(int(currChar) == 32 || int(currChar) == 9 || int(currChar) == 34) &&
-
 			((int(currChar) >= 48 && int(currChar) <= 57) ||
 			 (int(currChar) >= 65 && int(currChar) <= 90) ||
 			 (int(currChar) >= 97 && int(currChar) <= 122) ||
@@ -208,39 +206,8 @@ MToken getToken(string &line, int &pointer, int endLine)
 			{
 				token.value = tokenValue;
 			}
-			// Comprobar que tuvo final
 		}
-		// if (tokenValue[0] == '"')
-		// {
-		// 	token.type = "LITSTR";
-		// 	tokenValue = "\"";
 
-		// bool fin = true;
-		// for(int i = 1 ; fin && i < line.size() ; i++ ){
-		// 	tokenValue += line[i];
-		// 	if(tokenValue[i] == '\"' && tokenValue[i-1] != '\\'){
-		// 		fin = false;
-		// 	}
-		// }
-
-		// for(int i = line.find('\"')+ 1 ; i < tokenValue.size() - 1; i++ ){
-		// 	if(tokenValue[i] == '\"'){
-		// 		if(tokenValue[i-1] != '\\' )
-		// 			cout << "You need to add the character \\ before \"\n";
-		// 			errorCounter++;
-		// 	}
-		// 	if(tokenValue[i] == '\\'){
-		// 		if(tokenValue[i+1] != '\"' ){
-		// 			cout << "ERROR: "<< tokenValue[i] << tokenValue[i+1] << " not recognized\n";
-		// 			errorCounter++;
-		// 			i++;
-		// 		}
-		// 	}
-		// }
-
-		// token.value = tokenValue;
-		// pointer = line.size();
-		// }
 		else if (regex_match(tokenValue, numberRegexp))
 		{
 			token.type = "LITNUM";
@@ -248,8 +215,6 @@ MToken getToken(string &line, int &pointer, int endLine)
 			{
 				token.type = "LEXICAL ERROR";
 				token.value = "Remove the 0: " + tokenValue;
-				// cout << "LEXICAL ERROR\n";
-				// cout << "Remove the 0' : " << tokenValue << '\n';
 				errorCounter++;
 			}
 			int max = 2147483647;
@@ -257,8 +222,6 @@ MToken getToken(string &line, int &pointer, int endLine)
 			{
 				token.type = "LEXICAL ERROR";
 				token.value = "Out of range: " + tokenValue;
-				// cout << "LEXICAL ERROR\n";
-				// cout << "out of range" << tokenValue << '\n';
 				errorCounter++;
 			}
 		}
@@ -271,8 +234,6 @@ MToken getToken(string &line, int &pointer, int endLine)
 				 (int(currChar) >= 65 && int(currChar) <= 90) ||
 				 (int(currChar) >= 97 && int(currChar) <= 122) ||
 				 (int(currChar) == 95)))
-				// (find(operators.begin(), operators.end(), charStr) == operators.end()) &&
-				// (find(delimiters.begin(), delimiters.end(), charStr) == delimiters.end()))
 				{
 					tokenValue += currChar;
 					currChar = getChar(line, pointer);
