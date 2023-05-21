@@ -249,64 +249,6 @@ void Scanner::storeLines(string filename)
 	file.close();
 }
 
-// void Scanner::getToken()
-// {
-// 	int lineNumber = 1;
-// 	priority_queue<int> indentStack;
-// 	indentStack.push(0);
-
-// 	for (const string &line : fileLines)
-// 	{
-// 		MToken currToken;
-// 		int pointer = -1;
-// 		int endLine = line.length();
-// 		int currInden = computeIndent(line, pointer, endLine);
-
-// 		if (currInden > indentStack.top())
-// 		{
-// 			indentStack.push(currInden);
-// 			showMessage("DEBUG", "INDENT", "", lineNumber, pointer / 4);
-// 			currToken.type("INDENT");
-// 			currTokens.push(currToken);
-// 		}
-// 		while (currInden < indentStack.top())
-// 		{
-// 			indentStack.pop();
-// 			showMessage("DEBUG", "DEDENT", "", lineNumber, pointer / 4);
-// 			currToken.type("DEDENT");
-// 			currTokens.push(currToken);
-// 		}
-
-// 		while (pointer < endLine)
-// 		{
-// 			while (currChar == ' ')
-// 				currChar = getChar(line, pointer);
-
-// 			currToken = getTokenUtil(line, pointer, endLine);
-
-// 			if (currToken.type == "COMMENT")
-// 			{
-// 				pointer = endLine;
-// 			}
-// 			else
-// 			{
-// 				showMessage("DEBUG", currToken.type, currToken.value, lineNumber, pointer - currToken.value.length() + 1);
-// 				// cout<<"currChar : "<<currChar<<'\n';
-// 				currTokens.push(currToken);
-// 			}
-// 		}
-// 		if (currToken.type != "COMMENT")
-// 		{
-// 			showMessage("DEBUG", "NEWLINE", "", lineNumber, pointer + 1);
-// 			currToken.type = "NEWLINE";
-// 			currTokens.push(currToken);
-// 		}
-
-// 		lineNumber++;
-// 	}
-// 	cout << "INFO SCAN - Completed with " << errorCounter << " errors\n";
-// }
-
 void Scanner::scan()
 {
 	int lineNumber = 1;
@@ -320,7 +262,6 @@ void Scanner::scan()
 		MToken currToken;
 		int pointer = -1;
 		int endLine = line.length();
-		
 		int currInden = computeIndent(line, pointer, endLine);
 
 		if (currInden > indentStack.top())
@@ -328,6 +269,8 @@ void Scanner::scan()
 			indentStack.push(currInden);
 			showMessage("DEBUG", "INDENT", "", lineNumber, pointer / 4);
 			currToken.type = "INDENT";
+			currToken.line = lineNumber;
+
 			currTokens.push(currToken);
 		}
 		while (currInden < indentStack.top())
@@ -335,12 +278,13 @@ void Scanner::scan()
 			indentStack.pop();
 			showMessage("DEBUG", "DEDENT", "", lineNumber, pointer / 4);
 			currToken.type = "DEDENT";
+			currToken.line = lineNumber;
+
 			currTokens.push(currToken);
 		}
 
 		while (pointer < endLine)
 		{
-			
 			currToken = getTokenUtil(line, pointer, endLine);
 
 			if (currToken.type == "COMMENT")
@@ -351,6 +295,7 @@ void Scanner::scan()
 			{
 				showMessage("DEBUG", currToken.type, currToken.value, lineNumber, pointer - currToken.value.length() + 1);
 				// cout<<"currChar : "<<currChar<<'\n';
+				currToken.line = lineNumber;
 				currTokens.push(currToken);
 			}
 		}
@@ -358,10 +303,18 @@ void Scanner::scan()
 		{
 			showMessage("DEBUG", "NEWLINE", "", lineNumber, pointer + 1);
 			currToken.type = "NEWLINE";
+			currToken.line = lineNumber;
 			currTokens.push(currToken);
 		}
 
 		lineNumber++;
 	}
 	cout << "INFO SCAN - Completed with " << errorCounter << " errors\n";
+}
+
+MToken Scanner::getToken()
+{
+	MToken currToken = currTokens.front();
+	currTokens.pop();
+	return currToken;
 }

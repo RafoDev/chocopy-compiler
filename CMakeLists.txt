@@ -7,4 +7,4 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include_directories(include)
 
-add_executable(ChocopyCompiler src/main.cc src/Scanner.cc)
+add_executable(ChocopyCompiler src/main.cc src/Scanner.cc src/Mtoken.cc)

@@ -1,7 +1,7 @@
 all: clean main
 
 main:
-	g++ -o main.exe src/main.cc src/Scanner.cc -Iinclude
+	g++ -o main.exe src/main.cc src/Scanner.cc src/Mtoken.cc -Iinclude
 
 test:
 	@printf "\nTEST: scanning the file: test.py\n\n"

@@ -1,6 +1,6 @@
 
-#ifndef Scanner_H
-#define Scanner_H
+#ifndef SCANNER_H
+#define SCANNER_H
 
 #include <iostream>
 #include <string>
@@ -10,14 +10,8 @@
 #include <iterator>
 #include <vector>
 #include <queue>
+#include "MToken.h"
 using namespace std;
-
-struct MToken
-{
-	string type;
-	string value;
-	int line;
-};
 
 class Scanner
 {
@@ -60,6 +54,7 @@ public:
 	};
 
 	void scan();
+	MToken getToken();
 };
 
 #endif
