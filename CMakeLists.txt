@@ -1,12 +1,10 @@
-project("Chocopy-Compiler")
-
 cmake_minimum_required(VERSION 3.15)
+project(Chocopy-Compiler)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-include_directories($(CMAKE_CURRENT_SOURCE_DIR)/src)
+include_directories(include)
 
-
-add_executable(main.exe src/main.cc)
+add_executable(ChocopyCompiler src/main.cc src/Scanner.cc)
