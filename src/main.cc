@@ -13,26 +13,26 @@ char currChar = ' ';
 
 // todo: add more types
 vector<string> keywords = {
-		"False", "None", "True", "and", "as", "assert", "async", "await", "bool", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "int", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"};
+	"False", "None", "True", "and", "as", "assert", "async", "await", "bool", "break", "class", "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is", "int", "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"};
 vector<string> operators = {
-		"+", "-", "*", "%", "/", "<",
-		">", "<=", ">=", "==", "!="};
+	"+", "-", "*", "%", "/", "<",
+	">", "<=", ">=", "==", "!="};
 vector<string> delimiters = {
-		")",
-		"(",
-		"[",
-		"]",
-		",",
-		".",
-		";",
-		"=",
-		":",
-		"->"};
+	")",
+	"(",
+	"[",
+	"]",
+	",",
+	".",
+	"=",
+	":",
+	"->"};
 
 regex idRegexp("[a-z|A-Z][a-z|A-Z|0-9|_]*");
 regex numberRegexp("[0-9]+");
+regex escapeRegexp("[\"'ntrbfv\\0]");
 
-int errorCounter = 0 ;
+int errorCounter = 0;
 
 struct MToken
 {
@@ -101,16 +101,19 @@ MToken getToken(string &line, int &pointer, int endLine)
 		{
 			token.value += nextChar;
 			token.type = "DEL";
+			nextChar = getChar(line, pointer);
+			nextChar = getChar(line, pointer);
 		}
 		else if ((currChar == '>' && nextChar == '=') || (currChar == '<' && nextChar == '='))
 		{
 			token.value += nextChar;
+			nextChar = getChar(line, pointer);
 		}
 		else
 		{
 			token.type = "OP";
 		}
-		currChar = getChar(line, pointer);
+		currChar = nextChar;
 	}
 	else if (find(delimiters.begin(), delimiters.end(), charStr) != delimiters.end())
 	{
@@ -122,6 +125,7 @@ MToken getToken(string &line, int &pointer, int endLine)
 		{
 			token.value += nextChar;
 			token.type = "OP";
+			nextChar = getChar(line, pointer);
 		}
 		else
 		{
@@ -132,68 +136,112 @@ MToken getToken(string &line, int &pointer, int endLine)
 	else
 	{
 		while (
-				(pointer < endLine) &&
-				!(int(currChar) == 32 || int(currChar) == 9) &&
-				(find(operators.begin(), operators.end(), charStr) == operators.end()) &&
-				(find(delimiters.begin(), delimiters.end(), charStr) == delimiters.end()))
-		{
+			(pointer < endLine) &&
+			((int(currChar) >= 48 && int(currChar) <= 57) ||
+			 (int(currChar) >= 65 && int(currChar) <= 90) ||
+			 (int(currChar) >= 97 && int(currChar) <= 122) ||
+			 (int(currChar) == 95)) &&
 
+			(find(operators.begin(), operators.end(), charStr) == operators.end()) &&
+			(find(delimiters.begin(), delimiters.end(), charStr) == delimiters.end()))
+		{
 			tokenValue += currChar;
 			currChar = getChar(line, pointer);
 			charStr.assign(1, currChar);
 		}
 
 		token.value = tokenValue;
-		if (regex_match(tokenValue, idRegexp))
-			token.type = "ID";
 		if (find(keywords.begin(), keywords.end(), tokenValue) != keywords.end())
 			token.type = "KEY";
-		if(tokenValue[0] == '"'){
+		else if (regex_match(tokenValue, idRegexp))
+			token.type = "ID";
+
+		// Si encuentra comillas (")
+		else if (int(currChar) == 34)
+		{
 			token.type = "LITSTR";
-			tokenValue = "\"";
+			tokenValue = currChar;
+			currChar = getChar(line, pointer);
+			bool error = false;
+			bool final = false;
 
-			bool fin = true;
-			for(int i = 1 ; fin && i < line.size() ; i++ ){
-				tokenValue += line[i];
-				if(tokenValue[i] == '\"' && tokenValue[i-1] != '\\'){
-					fin = false;
-				}
-			}
-
-			for(int i = line.find('\"')+ 1 ; i < tokenValue.size() - 1; i++ ){
-				if(tokenValue[i] == '\"'){
-					if(tokenValue[i-1] != '\\' )
-						cout << "You need to add the character \\ before \"\n";
-						errorCounter++;
-				}
-				if(tokenValue[i] == '\\'){
-					if(tokenValue[i+1] != '\"' ){
-						cout << "ERROR: "<< tokenValue[i] << tokenValue[i+1] << " not recognized\n";
-						errorCounter++;
-						i++;
+			while (!final && (pointer < endLine))
+			{
+				// Caracter ASCII valido
+				if (int(currChar) >= 32 && int(currChar) <= 126)
+				{
+					tokenValue += currChar;
+					if (currChar == '"')
+						final = true;
+					else if (int(currChar) == 92)
+					{
+						// secuencias de escape válidas -> " ' n t r b f v 0
+						char nextChar = getChar(line, pointer);
+						tokenValue += currChar + nextChar;
+						if (!(pointer < endLine) || !regex_match(string(1, nextChar), std::regex(escapeRegexp)))
+						{
+							error = true;
+						}
 					}
 				}
+
+				currChar = getChar(line, pointer);
 			}
 
-			token.value = tokenValue;
-			pointer = line.size();
-
+			// Sin errores y con comilla de cierre (No se hace nada, el token se retorna)
+			// Hay una secuencia de escape inválida:
+			if (error)
+			{
+				token.type = "LEXICAL ERROR";
+				token.value = "Not recognized: " + tokenValue;
+				errorCounter++;
+			}
+			else if (!final)
+			{
+				token.type = "LEXICAL ERROR";
+				token.value = "Expected close symbol: " + tokenValue;
+				errorCounter++;
+			}
+			else
+			{
+				token.value = tokenValue;
+			}
 		}
-		if(regex_match(tokenValue, numberRegexp)){
+
+		else if (regex_match(tokenValue, numberRegexp))
+		{
 			token.type = "LITNUM";
-			if( tokenValue[0] == '0' && tokenValue.size() > 1 ){
-				cout << "LEXICAL ERROR\n";
-				cout << "Remove the 0' : " << tokenValue << '\n';
+			if (tokenValue[0] == '0' && tokenValue.size() > 1)
+			{
+				token.type = "LEXICAL ERROR";
+				token.value = "Remove the 0: " + tokenValue;
 				errorCounter++;
 			}
 			int max = 2147483647;
-			if( stol(tokenValue) > max){
-				cout << "LEXICAL ERROR\n";
-				cout << "out of range" << tokenValue << '\n';
+			if (stol(tokenValue) > max)
+			{
+				token.type = "LEXICAL ERROR";
+				token.value = "Out of range: " + tokenValue;
 				errorCounter++;
 			}
 		}
-		// todo: implement else{}, when tokenValue is a not supported token 
+		else
+		{
+			while (
+				(pointer < endLine) &&
+				!(int(currChar) == 32 || int(currChar) == 9 || int(currChar) == 34) &&
+				!((int(currChar) >= 48 && int(currChar) <= 57) ||
+				 (int(currChar) >= 65 && int(currChar) <= 90) ||
+				 (int(currChar) >= 97 && int(currChar) <= 122) ||
+				 (int(currChar) == 95)))
+				{
+					tokenValue += currChar;
+					currChar = getChar(line, pointer);
+					charStr.assign(1, currChar);
+				}
+			token.type = "LEXICAL ERROR";
+			token.value = "Not supported token: " + tokenValue;
+		}
 	}
 	return token;
 }
@@ -243,6 +291,7 @@ void scan(string filename)
 				else
 				{
 					showMessage("DEBUG", currToken.type, currToken.value, lineNumber, pointer - currToken.value.length() + 1);
+					// cout<<"currChar : "<<currChar<<'\n';
 				}
 			}
 			if (currToken.type != "COMMENT")
@@ -252,7 +301,7 @@ void scan(string filename)
 
 			lineNumber++;
 		}
-		cout << "INFO SCAN - Completed with " << errorCounter <<" errors\n";
+		cout << "INFO SCAN - Completed with " << errorCounter << " errors\n";
 	}
 
 	file.close();

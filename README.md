@@ -22,12 +22,12 @@ Implementación de un analizador léxico (scanner) para el lenguaje propuesto (C
         - [x] NEWLINE, INDENT  Y DEDENT
         - [x] Es una palabra reservada.
         - [x] Es un id.
-        - [ ] Es un literal (número o string)
+        - [x] Es un literal (número o string)
         - [x] Es un símbolo o delimitador.
 
 4. Cuando se detecte un error:
-    - [ ] Informar con detalles útiles, incluido dónde se encontró, qué salió mal exactamente y cómo el programador podría solucionarlo.
-    - [ ] Probar con diferentes posibles errores  
+    - [x] Informar con detalles útiles, incluido dónde se encontró, qué salió mal exactamente y cómo el programador podría solucionarlo.
+    - [x] Probar con diferentes posibles errores  
 
 5. Incluir una funcionalidad de salida detallada que rastree las etapas del scanner.
 
