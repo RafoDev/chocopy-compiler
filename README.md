@@ -70,11 +70,9 @@ make
 ...
 ```
 ## Interfaz
+Captura de pantalla de la UI.
 
 ![Chocopy Banner](https://i.postimg.cc/6QqD5d07/usage-Console.png)
-
-
-
 
 # CFG
 Gramática Libre de Contexto utilizada.
