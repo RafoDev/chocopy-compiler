@@ -1,9 +1,11 @@
 
-# CHOCOPY SCANNER 
+# ChocoPy Compiler 🍫🐍
 
-Implementación de un analizador léxico (scanner) para el lenguaje propuesto (ChocoPy).
+![Chocopy Banner](https://i.postimg.cc/NFWFJRty/chocopybanner.png)
 
-## Objetivos
+Implementación de un analizador léxico (scanner) y sintáctico (parser) para un lenguaje basado en ChocoPy.
+# Objetivos
+## Scanner
 1. El código fuente se leerá desde un archivo o un elemento de área de texto.
 2. Implementar la lectura del input.
     - [x] Línea por línea
@@ -31,88 +33,126 @@ Implementación de un analizador léxico (scanner) para el lenguaje propuesto (C
 
 5. Incluir una funcionalidad de salida detallada que rastree las etapas del scanner.
 
+## Parser
+1. Integración con scanner: El parser debe hacer uso de la función getToken() del scanner para recibir cada uno de los tokens.
+2. Se tiene una función/método por cada símbolo no terminal (NT), que analizará si el símbolo se está derivando de manera correcta.
+3. Decidir qué producción es la que se usará para derivar el NT (usar conjunto de primeros) y recorrer cada símbolo de su derivación.
 
-## Ejemplo de uso
+    - [x] Si estamos frente a un token, este debe hacer match con el input
+    - [x] Si estamos frente a otro NT, se debe llamar a su función/ método.
+    - [x] Tomar en cuenta que para usar la producción vacía, el siguiente
+    token del input debe estar en el conjunto de siguientes del NT.
 
-El siguiente código en ChocoPy se guarda en un archivo `test.py`.
+    - [x] peekchar(): devuelve el siguiente carácter sin mover el puntero. 
 
-```python
-# A broken program
-def is_even(x:int) -> bool:
-    if x % 2 == 1:
-        return 0      # FIXME
-    else:
-        return True
+3. El parser nos devuelve True si el código de entrada pertenece al lenguaje.
+    - [x] Caso contrario, el parser nos devuelve la lista de errores
 
-print(is_even("3"))   # FIXME
-```
+
+# Uso
+
 Se compila y ejecuta el código con: 
 
 ```bash
 make
 make test #o con ./main.exe test.py
+make clean
 ```
 
-Tambien se puede compilar usando CMake con:
+Alternativamente se puede usar CMake:
 
 ```bash
 cmake -S . -B build -G "Unix Makefiles"
 cd build
 make
-./main.exe ../test.py
-./main.exe ../test1.py
-./main.exe ../test2.py
+./main.exe tests/test.py
+./main.exe tests/test1.py
+./main.exe tests/test2.py
+...
 ```
 
+# CFG
 
-Resultado:
-```
-INFO SCAN - Start scanning...
-DEBUG SCAN - KEY [def] found at (2:1)
-DEBUG SCAN - ID [is_even] found at (2:5)
-DEBUG SCAN - DEL [(] found at (2:12)
-DEBUG SCAN - ID [x] found at (2:13)
-DEBUG SCAN - DEL [:] found at (2:14)
-DEBUG SCAN - KEY [int] found at (2:15)
-DEBUG SCAN - DEL [)] found at (2:18)
-DEBUG SCAN - DEL [->] found at (2:20)
-DEBUG SCAN - KEY [bool] found at (2:23)
-DEBUG SCAN - DEL [:] found at (2:27)
-DEBUG SCAN - NEWLINE [] found at (2:28)
-DEBUG SCAN - INDENT [] found at (3:1)
-DEBUG SCAN - KEY [if] found at (3:5)
-DEBUG SCAN - ID [x] found at (3:8)
-DEBUG SCAN - OP [%] found at (3:11)
-DEBUG SCAN - LITNUM [2] found at (3:12)
-DEBUG SCAN - OP [==] found at (3:13)
-DEBUG SCAN - DEL [=] found at (3:15)
-DEBUG SCAN - LITNUM [1] found at (3:17)
-DEBUG SCAN - DEL [:] found at (3:18)
-DEBUG SCAN - NEWLINE [] found at (3:19)
-DEBUG SCAN - INDENT [] found at (4:2)
-DEBUG SCAN - KEY [return] found at (4:9)
-DEBUG SCAN - LITNUM [0] found at (4:16)
-DEBUG SCAN - DEDENT [] found at (5:1)
-DEBUG SCAN - KEY [else] found at (5:5)
-DEBUG SCAN - DEL [:] found at (5:9)
-DEBUG SCAN - NEWLINE [] found at (5:10)
-DEBUG SCAN - INDENT [] found at (6:2)
-DEBUG SCAN - KEY [return] found at (6:9)
-DEBUG SCAN - KEY [True] found at (6:16)
-DEBUG SCAN - NEWLINE [] found at (6:20)
-DEBUG SCAN - DEDENT [] found at (7:0)
-DEBUG SCAN - DEDENT [] found at (7:0)
-DEBUG SCAN - NEWLINE [] found at (7:1)
-DEBUG SCAN - ID [print] found at (8:1)
-DEBUG SCAN - DEL [(] found at (8:6)
-DEBUG SCAN - ID [is_even] found at (8:7)
-DEBUG SCAN - DEL [(] found at (8:14)
-DEBUG SCAN - LITSTR ["3"] found at (8:15)
-DEBUG SCAN - DEL [)] found at (8:18)
-DEBUG SCAN - DEL [)] found at (8:19)
-INFO SCAN - Completed with 0 errors
-``` 
-Finalmente:
-```bash
-make clean
-```
+Program → DefList StatementList
+DefList → Def DefList
+DefList → ε
+Def → def ID ( TypedVarList ) Return : Block
+TypedVar → ID : Type
+Type → int
+Type → str
+Type → [ Type ]
+TypedVarList → ε
+TypedVarList → TypedVar TypedVarListTail
+TypedVarListTail → , TypedVar TypedVarListTail
+TypedVarListTail → ε
+Return → ε
+Return → -> Type
+Block → NEWLINE INDENT Statement StatementList DEDENT
+StatementList → Statement StatementList
+StatementList → ε
+Statement → SimpleStatement NEWLINE
+Statement → if Expr : Block ElifList Else
+Statement → while Expr : Block
+Statement → for ID in Expr : Block
+ElifList → Elif ElifList
+ElifList → ε
+Elif → elif Expr : Block
+Else → ε
+Else → else : Block
+SimpleStatement → Expr SSTail
+SimpleStatement → pass
+SimpleStatement → return ReturnExpr
+SSTail → ε
+SSTail → = Expr
+ReturnExpr → Expr
+ReturnExpr → ε
+Expr → orExpr ExprPrime
+ExprPrime → if andExpr else andExpr ExprPrime
+ExprPrime → ε
+orExpr → andExpr orExprPrime
+orExprPrime → or andExpr orExprPrime
+orExprPrime → ε
+andExpr → notExpr andExprPrime
+andExprPrime → and notExpr andExprPrime
+andExprPrime → ε
+notExpr → CompExpr notExprPrime
+notExprPrime → not CompExpr notExprPrime
+notExprPrime → ε
+CompExpr → IntExpr CompExprPrime
+CompExprPrime → CompOp IntExpr CompExprPrime
+CompExprPrime → ε
+IntExpr → Term IntExprPrime
+IntExprPrime → + Term IntExprPrime
+IntExprPrime → - Term IntExprPrime
+IntExprPrime → ε
+Term → Factor TermPrime
+TermPrime → * Factor TermPrime
+TermPrime → // Factor TermPrime
+TermPrime → % Factor TermPrime
+TermPrime → ε
+Factor → - Factor
+Factor → Name
+Factor → Literal
+Factor → List
+Factor → ( Expr )
+Name → ID NameTail
+NameTail → ε
+NameTail → ( ExprList )
+NameTail → List
+Literal → None
+Literal → True
+Literal → False
+Literal → INTEGER
+Literal → STRING
+List → [ ExprList ]
+ExprList → ε
+ExprList → Expr ExprListTail
+ExprListTail → ε
+ExprListTail → , Expr ExprListTail
+CompOp → ==
+CompOp → !=
+CompOp → <
+CompOp → >
+CompOp → <=
+CompOp → >=
+CompOp → is

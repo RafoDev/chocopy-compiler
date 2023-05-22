@@ -14,7 +14,6 @@
 #include "MessageGenerator.h"
 using namespace std;
 
-
 class Scanner
 {
 private:
