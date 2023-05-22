@@ -55,8 +55,10 @@ Se compila y ejecuta el código con:
 
 ```bash
 make
-make test #o con ./main.exe test.py
+make test # para ejecutar los tests disponibles
 make clean
+./main.exe "tests/nombre_del_test.txt"
+./main.exe # se lanza la ui
 ```
 
 Alternativamente se puede usar CMake:
@@ -65,14 +67,18 @@ Alternativamente se puede usar CMake:
 cmake -S . -B build -G "Unix Makefiles"
 cd build
 make
-./main.exe tests/test.py
-./main.exe tests/test1.py
-./main.exe tests/test2.py
 ...
 ```
+## Interfaz
+
+![Chocopy Banner](https://i.postimg.cc/6QqD5d07/usage-Console.png)
+
+
+
 
 # CFG
-
+Gramática Libre de Contexto utilizada.
+```plaintext
 Program → DefList StatementList
 DefList → Def DefList
 DefList → ε
@@ -156,3 +162,4 @@ CompOp → >
 CompOp → <=
 CompOp → >=
 CompOp → is
+```

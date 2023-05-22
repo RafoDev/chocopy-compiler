@@ -45,59 +45,69 @@ void getTestFiles()
 
 int main(int argc, char *argv[])
 {
-	bool quit = false;
-	getTestFiles();
-
-	while (!quit)
+	if (argc >= 2)
 	{
-		cout << '\n';
-		std::string filename = "data/chocopy.txt";
-		printAsciiArt(filename);
-		cout << '\n';
+		Parser parser(argv[1], true);
+		parser.parse();
+	}
+	else
+	{
 
-		int testNumber = testFiles.size();
-		int option = 0;
+		bool quit = false;
+		getTestFiles();
 
-		cout << "Escribe el número del archivo que deseas analizar:\n";
-		int i = 0;
-		for (; i < testNumber; i++)
+		while (!quit)
 		{
-			cout << " └─ [" << i << "] " << testFiles[i] << '\n';
-		}
-		int all, quit;
-		all = i;
-		cout << " └─ [" << i << "] "
+			cout << '\n';
+			std::string filename = "data/chocopy.txt";
+			printAsciiArt(filename);
+			cout << '\n';
+
+			int testNumber = testFiles.size();
+			int option = 0;
+
+			cout << "Escribe el número del archivo que deseas analizar:\n";
+			int i = 0;
+			for (; i < testNumber; i++)
+			{
+				cout << " └─ [" << i << "] " << testFiles[i] << '\n';
+			}
+			int all, quit;
+			all = i;
+			cout << " └─ [" << i << "] "
 				 << "Todos\n";
-		i++;
-		quit = i;
-		cout << " └─ [" << i << "] "
+			i++;
+			quit = i;
+			cout << " └─ [" << i << "] "
 				 << "Salir\n";
 
-		cout << "Tu opción: ";
-		cin >> option;
+			cout << "Tu opción: ";
+			cin >> option;
+			cout << '\n';
 
-		if (option < all)
-		{
-			Parser parser("tests/" + testFiles[option], true);
-			parser.parse();
-		}
-		else if (option == all)
-		{
-			for (int j = 0; j < all; j++)
+			if (option < all)
 			{
-				cout << "\n> " << testFiles[j] << '\n';
-				Parser parser("tests/" + testFiles[j], true);
+				Parser parser("tests/" + testFiles[option], true);
 				parser.parse();
 			}
-			cout << '\n';
+			else if (option == all)
+			{
+				for (int j = 0; j < all; j++)
+				{
+					cout << "\n> " << testFiles[j] << '\n';
+					Parser parser("tests/" + testFiles[j], true);
+					parser.parse();
+				}
+				cout << '\n';
+			}
+			else
+			{
+				return 0;
+			}
+			char tmp;
+			cout << "Presiona cualquier tecla para continuar...\n";
+			cin >> tmp;
 		}
-		else
-		{
-			return 0;
-		}
-		char tmp;
-		cout << "Presiona cualquier tecla para continuar...\n";
-		cin>>tmp;
 	}
 	return 0;
 }
