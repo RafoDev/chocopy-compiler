@@ -11,24 +11,23 @@
 #include <vector>
 #include <queue>
 #include "MToken.h"
+#include "MessageGenerator.h"
 using namespace std;
+
 
 class Scanner
 {
 private:
+	MessageGenerator msgGen;
 	char currChar;
 	int errorCounter;
 	vector<string> errors;
 	vector<string> fileLines;
 	string filename;
 	queue<MToken> currTokens;
-	priority_queue<int> indentStack;
-	
-	int currPointerIndex;
-	int currLineIndex;
-	int currInden;
+	bool debug;
 
-	void showMessage(string type, string tokenType, string token, int lineNumber, int pointer);
+	// void showMessage(string type, string tokenType, string token, int lineNumber, int pointer);
 	char getChar(string line, int &pointer);
 	char peekChar(string line, int pointer);
 	int computeIndent(string line, int &pointer, int endLine);
@@ -40,19 +39,20 @@ private:
 	MToken scanLiteralNumber(MToken token, string &line, int &pointer, int endLine);
 	MToken getTokenUtil(string line, int &pointer, int endLine);
 	void storeLines(string filename);
+	bool scanEspacesTabs(string line);
+	void printErrors();
 
 public:
-	Scanner(string _filename)
+	Scanner(){};
+	Scanner(string _filename) { init(_filename); };
+	void init(string _filename, bool _debug = false)
 	{
-		currInden = 0;
-		filename = _filename;
+		debug = _debug;
 		currChar = ' ';
 		errorCounter = 0;
-		currLineIndex = 0;
-		currPointerIndex = -1;
-		storeLines(filename);
-	};
-
+		filename = _filename;
+		storeLines(_filename);
+	}
 	void scan();
 	MToken getToken();
 };
