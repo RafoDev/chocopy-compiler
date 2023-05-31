@@ -14,7 +14,9 @@ void Parser::matchType(string expectedType)
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        currentToken = scanner.getToken();
+
+        while(currentToken.value!="NEWLINE")
+            currentToken = scanner.getToken();
 
         // error("Error de sintaxis. Se esperaba: " + expectedType);
     }
@@ -33,7 +35,10 @@ void Parser::matchValue(string expectedValue)
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        currentToken = scanner.getToken();
+        // currentToken = scanner.getToken();
+
+        while(currentToken.value!="NEWLINE")
+            currentToken = scanner.getToken();
 
         // error("Error de sintaxis. Se esperaba: " + expectedValue);
     }
@@ -162,7 +167,10 @@ void Parser::Type()
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        currentToken = scanner.getToken();
+
+        while(currentToken.value!="NEWLINE")
+            currentToken = scanner.getToken();
+        // currentToken = scanner.getToken();
 
         // error("Error de sintaxis. Se esperaba un tipo válido.");
     }
@@ -639,7 +647,10 @@ void Parser::Factor()
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        currentToken = scanner.getToken();
+
+        while(currentToken.value!="NEWLINE")
+            currentToken = scanner.getToken();
+        // currentToken = scanner.getToken();
 
         // error("Error de sintaxis. Se esperaba un factor válido.");
     }
@@ -698,7 +709,9 @@ void Parser::Literal()
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        currentToken = scanner.getToken();
+        while(currentToken.value!="NEWLINE")
+            currentToken = scanner.getToken();
+        // currentToken = scanner.getToken();
 
         // error("Error de sintaxis. Se esperaba un literal válido.");
     }
@@ -778,7 +791,9 @@ void Parser::CompOp()
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        currentToken = scanner.getToken();
+        while(currentToken.value!="NEWLINE")
+            currentToken = scanner.getToken();
+        // currentToken = scanner.getToken();
 
         // error("Error de sintaxis. Se esperaba un operador de comparación válido.");
     }
@@ -802,7 +817,9 @@ void Parser::parse()
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        currentToken = scanner.getToken();
+        while(currentToken.value!="NEWLINE")
+            currentToken = scanner.getToken();
+        // currentToken = scanner.getToken();
 
         // error("Error de sintaxis. No se han consumido todos los tokens.");
     }

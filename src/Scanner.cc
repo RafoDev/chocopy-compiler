@@ -105,14 +105,14 @@ string Scanner::getValidTokenValue(MToken token, string &line, int &pointer, int
 	string tokenValue = "";
 	string charStr(1, currChar);
 	while (
-			(pointer < endLine) &&
-			((int(currChar) >= 48 && int(currChar) <= 57) ||
-			 (int(currChar) >= 65 && int(currChar) <= 90) ||
-			 (int(currChar) >= 97 && int(currChar) <= 122) ||
-			 (int(currChar) == 95)) &&
+		(pointer < endLine) &&
+		((int(currChar) >= 48 && int(currChar) <= 57) ||
+		 (int(currChar) >= 65 && int(currChar) <= 90) ||
+		 (int(currChar) >= 97 && int(currChar) <= 122) ||
+		 (int(currChar) == 95)) &&
 
-			(find(operators.begin(), operators.end(), charStr) == operators.end()) &&
-			(find(delimiters.begin(), delimiters.end(), charStr) == delimiters.end()))
+		(find(operators.begin(), operators.end(), charStr) == operators.end()) &&
+		(find(delimiters.begin(), delimiters.end(), charStr) == delimiters.end()))
 	{
 		tokenValue += currChar;
 		currChar = getChar(line, pointer);
@@ -127,12 +127,12 @@ MToken Scanner::getInvalidToken(MToken token, string &line, int &pointer, int en
 	string charStr(1, currChar);
 
 	while (
-			(pointer < endLine) &&
-			!(int(currChar) == 32 || int(currChar) == 9 || int(currChar) == 34) &&
-			!((int(currChar) >= 48 && int(currChar) <= 57) ||
-				(int(currChar) >= 65 && int(currChar) <= 90) ||
-				(int(currChar) >= 97 && int(currChar) <= 122) ||
-				(int(currChar) == 95)))
+		(pointer < endLine) &&
+		!(int(currChar) == 32 || int(currChar) == 9 || int(currChar) == 34) &&
+		!((int(currChar) >= 48 && int(currChar) <= 57) ||
+		  (int(currChar) >= 65 && int(currChar) <= 90) ||
+		  (int(currChar) >= 97 && int(currChar) <= 122) ||
+		  (int(currChar) == 95)))
 	{
 		tokenValue += currChar;
 		currChar = getChar(line, pointer);
@@ -216,8 +216,8 @@ MToken Scanner::scanLiteralNumber(MToken token, string &line, int &pointer, int 
 MToken Scanner::getTokenUtil(string line, int &pointer, int endLine)
 {
 
-	while (currChar == ' ' || currChar == '	')
-		currChar = getChar(line, pointer);
+	// while (currChar == ' ' || currChar == '	')
+	// 	currChar = getChar(line, pointer);
 	// cout << line.substr(pointer) << '\n';
 
 	MToken token;
@@ -320,42 +320,49 @@ void Scanner::scan()
 
 			while (pointer < endLine)
 			{
-				currToken = getTokenUtil(line, pointer, endLine);
+				while (currChar == ' ' || currChar == '	')
+					currChar = getChar(line, pointer);
 
-				if (currToken.type == "COMMENT")
+				if (pointer < endLine)
 				{
-					pointer = endLine;
-				}
-				else
-				{
-					// showMessage("DEBUG_SCANNER", currToken.type, currToken.value, lineNumber, pointer - currToken.value.length() + 1);
-					// cout<<"currChar : "<<currChar<<'\n';
-					currToken.line = lineNumber;
-					currTokens.push(currToken);
 
-					int tmpPointer = pointer - currToken.value.length() + 1;
-					if (tmpPointer < 0)
+					currToken = getTokenUtil(line, pointer, endLine);
+
+					if (currToken.type == "COMMENT")
 					{
-						tmpPointer = 0;
-						// currToken.value = line;
+						pointer = endLine;
 					}
 					else
 					{
-						tmpPointer /= 4;
+						// showMessage("DEBUG_SCANNER", currToken.type, currToken.value, lineNumber, pointer - currToken.value.length() + 1);
+						// cout<<"currChar : "<<currChar<<'\n';
+						currToken.line = lineNumber;
+						currTokens.push(currToken);
+
+						int tmpPointer = pointer - currToken.value.length() + 1;
+						if (tmpPointer < 0)
+						{
+							tmpPointer = 0;
+							// currToken.value = line;
+						}
+						else
+						{
+							tmpPointer /= 4;
+						}
+
+						if (currToken.type == "ERROR")
+						{
+							msgGen.buildMsg(MessageType::LEXICAL_ERROR, currToken.type, currToken.value, lineNumber, tmpPointer);
+							errors.push_back(msgGen.getMessage());
+						}
+						else
+							msgGen.buildMsg(MessageType::DEBUG_SCANNER, currToken.type, currToken.value, lineNumber, tmpPointer);
+
+						if (debug)
+							msgGen.printMessage();
+
+						currToken.type == "";
 					}
-
-					if (currToken.type == "ERROR")
-					{
-						msgGen.buildMsg(MessageType::LEXICAL_ERROR, currToken.type, currToken.value, lineNumber, tmpPointer);
-						errors.push_back(msgGen.getMessage());
-					}
-					else
-						msgGen.buildMsg(MessageType::DEBUG_SCANNER, currToken.type, currToken.value, lineNumber, tmpPointer);
-
-					if (debug)
-						msgGen.printMessage();
-
-					currToken.type == "";
 				}
 			}
 			if (currToken.type != "COMMENT")
@@ -401,7 +408,7 @@ void Scanner::printErrors()
 		for (string error : errors)
 			cout << " " << error;
 	}
-		cout << '\n';
+	cout << '\n';
 }
 
 MToken Scanner::getToken()
