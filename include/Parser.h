@@ -10,6 +10,7 @@ using namespace std;
 class Parser
 {
 private:
+    bool panicMode;
     int errorCounter;
     MToken currentToken;
     Scanner scanner;
@@ -18,8 +19,8 @@ private:
     MessageGenerator msgGen;
     vector<string> errors;
 
-    void matchType(string expectedType);
-    void matchValue(string expectedValue);
+    bool matchType(string expectedType);
+    bool matchValue(string expectedValue);
     void consume();
     void Program();
     void DefList();
@@ -65,6 +66,7 @@ private:
 public:
     Parser(string filename, bool _debugConsume = false)
     {
+        panicMode=false;
         debugConsume = _debugConsume;
         debug = false;
         scanner.init(filename, debugConsume);

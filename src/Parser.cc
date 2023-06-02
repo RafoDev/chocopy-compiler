@@ -1,11 +1,12 @@
 
 #include "../include/Parser.h"
 
-void Parser::matchType(string expectedType)
+bool Parser::matchType(string expectedType)
 {
     if (currentToken.type == expectedType)
     {
         consume();
+        return true;
     }
     else
     {
@@ -15,18 +16,21 @@ void Parser::matchType(string expectedType)
         errors.push_back(msgGen.getMessage());
         errorCounter++;
 
-        while(currentToken.value!="NEWLINE")
+        while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
 
+        panicMode = true;
+        return false;
         // error("Error de sintaxis. Se esperaba: " + expectedType);
     }
 }
 
-void Parser::matchValue(string expectedValue)
+bool Parser::matchValue(string expectedValue)
 {
     if (currentToken.value == expectedValue)
     {
         consume();
+        return true;
     }
     else
     {
@@ -37,10 +41,12 @@ void Parser::matchValue(string expectedValue)
         errorCounter++;
         // currentToken = scanner.getToken();
 
-        while(currentToken.value!="NEWLINE")
+        while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
+        panicMode = true;
 
         // error("Error de sintaxis. Se esperaba: " + expectedValue);
+        return false;
     }
 }
 void Parser::consume()
@@ -89,8 +95,12 @@ void Parser::Def()
     matchValue("(");
     TypedVarList();
     matchValue(")");
-    Return();
-    matchValue(":");
+    if (!panicMode)
+    {
+        Return();
+        matchValue(":");
+        panicMode = false;
+    }
     Block();
     if (debug)
         cout << "(CLOSE) Def\n";
@@ -140,6 +150,7 @@ void Parser::TypedVar()
 
     matchType("ID");
     matchValue(":");
+
     Type();
     if (debug)
         cout << "(CLOSE) TypedVar\n";
@@ -168,7 +179,7 @@ void Parser::Type()
         errors.push_back(msgGen.getMessage());
         errorCounter++;
 
-        while(currentToken.value!="NEWLINE")
+        while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
         // currentToken = scanner.getToken();
 
@@ -648,7 +659,7 @@ void Parser::Factor()
         errors.push_back(msgGen.getMessage());
         errorCounter++;
 
-        while(currentToken.value!="NEWLINE")
+        while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
         // currentToken = scanner.getToken();
 
@@ -709,7 +720,7 @@ void Parser::Literal()
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        while(currentToken.value!="NEWLINE")
+        while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
         // currentToken = scanner.getToken();
 
@@ -791,7 +802,7 @@ void Parser::CompOp()
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        while(currentToken.value!="NEWLINE")
+        while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
         // currentToken = scanner.getToken();
 
@@ -817,7 +828,7 @@ void Parser::parse()
             msgGen.printMessage();
         errors.push_back(msgGen.getMessage());
         errorCounter++;
-        while(currentToken.value!="NEWLINE")
+        while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
         // currentToken = scanner.getToken();
 
