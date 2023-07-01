@@ -31,7 +31,7 @@ namespace fs = std::filesystem;
 vector<string> testFiles;
 void getTestFiles()
 {
-	string folderPath = "tests"; // Reemplaza con la ruta de la carpeta deseada
+	string folderPath = "../tests"; // Reemplaza con la ruta de la carpeta deseada
 
 	for (const auto &entry : fs::directory_iterator(folderPath))
 	{
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 		while (!quit)
 		{
 			cout << '\n';
-			std::string filename = "data/chocopy.txt";
+			std::string filename = "../data/chocopy.txt";
 			printAsciiArt(filename);
 			cout << '\n';
 
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
 			if (option < all)
 			{
-				Parser parser("tests/" + testFiles[option], true);
+				Parser parser("../tests/" + testFiles[option], true);
 				parser.parse();
 			}
 			else if (option == all)
@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 				for (int j = 0; j < all; j++)
 				{
 					cout << "\n> " << testFiles[j] << '\n';
-					Parser parser("tests/" + testFiles[j], true);
+					Parser parser("../tests/" + testFiles[j], true);
 					parser.parse();
 				}
 				cout << '\n';
