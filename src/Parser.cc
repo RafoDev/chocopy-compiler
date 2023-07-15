@@ -18,7 +18,6 @@ bool Parser::matchType(string expectedType)
 
         while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
-
         panicMode = true;
         return false;
         // error("Error de sintaxis. Se esperaba: " + expectedType);
@@ -57,25 +56,45 @@ void Parser::consume()
 
     // cout << "Consuming : " << currentToken.value << '\n';
     currentToken = scanner.getToken();
+    if (currentToken.type == "LITSTR")
+    {
+
+        string subLit = currentToken.value.substr(1, currentToken.value.size() - 2);
+        currentToken.value = subLit;
+    }
 }
 void Parser::Program()
 {
+    auto syntaxTree = ASTNode::GetNewInstance(ASTNodeType::Default, "Program");
     if (debug)
         cout << "(OPEN) Program\n";
-    DefList();
-    StatementList();
+
+    syntaxTree->addChild(DefList());
+    syntaxTree->addChild(StatementList());
+
     if (debug)
         cout << "(CLOSE) Program\n";
+
+    if (errorCounter == 0)
+    {
+        ASTNodeWalker walker(syntaxTree);
+        walker.buildDotFormat();
+        // std::cout << walker.getDotFormat() << std::endl;
+        std::ofstream{"dot_format.txt", std::ios::trunc | std::ios::out} << walker.getDotFormat();
+        system("dot -O -Tpng dot_format.txt");
+    }
 }
-void Parser::DefList()
+AST Parser::DefList()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) DefList\n";
 
     if (currentToken.value == "def")
     {
-        Def();
-        DefList();
+        localTree->addChild(Def());
+        localTree->addChild(DefList());
     }
     else
     {
@@ -83,57 +102,107 @@ void Parser::DefList()
     }
     if (debug)
         cout << "(CLOSE) DefList\n";
+
+    return localTree;
 }
 
-void Parser::Def()
+AST Parser::Def()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "def");
     if (debug)
         cout << "(OPEN) Def\n";
 
     matchValue("def");
+
+    auto IDLeave = ASTNode::GetNewInstance(ASTNodeType::Id, currentToken.value);
+    localTree->addChild(IDLeave);
+
     matchType("ID");
-    matchValue("(");
-    TypedVarList();
-    matchValue(")");
+
     if (!panicMode)
     {
-        Return();
-        matchValue(":");
-        panicMode = false;
+        matchValue("(");
+        if (!panicMode)
+        {
+            localTree->addChild(TypedVarList());
+            if (!panicMode)
+            {
+                matchValue(")");
+                if (!panicMode)
+                {
+                    localTree->addChild(Return());
+                    if (!panicMode)
+                    {
+                        matchValue(":");
+                    }
+                    panicMode = false;
+                }
+            }
+        }
+        else
+        {
+            panicMode = false;
+        }
+        localTree->addChild(Block());
     }
-    Block();
+    else
+    {
+        panicMode = false;
+        matchValue("NEWLINE");
+    }
     if (debug)
         cout << "(CLOSE) Def\n";
+    return localTree;
 }
 
-void Parser::TypedVarList()
+AST Parser::TypedVarList()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
     if (debug)
         cout << "(OPEN) TypedVarList\n";
 
     if (currentToken.type == "ID")
     {
-        TypedVar();
-        TypedVarListTail();
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "args");
+        localTree->addChild(TypedVar());
+        localTree->addChild(TypedVarListTail());
+    }
+    if (!panicMode)
+    {
+        if (currentToken.value != ")")
+        {
+            localTree = ASTNode::GetNewInstance(ASTNodeType::Error, "Error");
+            msgGen.buildMsg(MessageType::SYNTAX_ERROR, currentToken.type, "Expected a valid id, returned '" + currentToken.value + "'", currentToken.line, 0);
+            if (debugConsume)
+                msgGen.printMessage();
+            errors.push_back(msgGen.getMessage());
+            errorCounter++;
+
+            while (currentToken.value != "NEWLINE")
+                currentToken = scanner.getToken();
+
+            panicMode = true;
+        }
     }
     else
     {
-        // Regla epsilon
     }
     if (debug)
         cout << "(CLOSE) TypedVarList\n";
+    return localTree;
 }
 
-void Parser::TypedVarListTail()
+AST Parser::TypedVarListTail()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
     if (debug)
         cout << "(OPEN) TypedVarListTail\n";
 
     if (currentToken.value == ",")
     {
         matchValue(",");
-        TypedVar();
-        TypedVarListTail();
+        localTree->addChild(TypedVar());
+        localTree->addChild(TypedVarListTail());
     }
     else
     {
@@ -141,28 +210,39 @@ void Parser::TypedVarListTail()
     }
     if (debug)
         cout << "(CLOSE) TypedVarListTail\n";
+    return localTree;
 }
 
-void Parser::TypedVar()
+AST Parser::TypedVar()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, ":");
     if (debug)
         cout << "(OPEN) TypedVar\n";
 
+    localTree->addChild(ASTNode::GetNewInstance(ASTNodeType::Id, currentToken.value));
+
     matchType("ID");
+
     matchValue(":");
 
-    Type();
+    if (!panicMode)
+    {
+        localTree->addChild(Type());
+    }
     if (debug)
         cout << "(CLOSE) TypedVar\n";
+    return localTree;
 }
 
-void Parser::Type()
+AST Parser::Type()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
     if (debug)
         cout << "(OPEN) Type\n";
 
     if (currentToken.value == "int" || currentToken.value == "str")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::DataType, currentToken.value);
         consume();
     }
     else if (currentToken.value == "[")
@@ -181,23 +261,29 @@ void Parser::Type()
 
         while (currentToken.value != "NEWLINE")
             currentToken = scanner.getToken();
+
+        panicMode = true;
         // currentToken = scanner.getToken();
 
         // error("Error de sintaxis. Se esperaba un tipo válido.");
     }
     if (debug)
         cout << "(CLOSE) Type\n";
+    return localTree;
 }
 
-void Parser::Return()
+AST Parser::Return()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
     if (debug)
         cout << "(OPEN) Return\n";
 
-    if (currentToken.value == "->")
+    if (currentToken.value != ":")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, "->");
         matchValue("->");
-        Type();
+        if (!panicMode)
+            localTree->addChild(Type());
     }
     else
     {
@@ -205,25 +291,32 @@ void Parser::Return()
     }
     if (debug)
         cout << "(CLOSE) Return\n";
+    return localTree;
 }
 
-void Parser::Block()
+AST Parser::Block()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) Block\n";
 
     matchType("NEWLINE");
     matchType("INDENT");
-    Statement();
-    StatementList();
+
+    localTree->addChild(Statement());
+    localTree->addChild(StatementList());
+
     matchType("DEDENT");
     if (debug)
         cout << "(CLOSE) Block\n";
+    return localTree;
 }
 
-void Parser::StatementList()
+AST Parser::StatementList()
 {
     // ", if, while, for, pass, return, -, (, ID, None, True, False, INTEGER, STRING, [
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
 
     if (debug)
         cout << "(OPEN) StatementList\n";
@@ -237,8 +330,8 @@ void Parser::StatementList()
         (currentToken.value == "False") || (currentToken.type == "LITNUM") ||
         (currentToken.type == "LITSTR") || (currentToken.value == "("))
     {
-        Statement();
-        StatementList();
+        localTree->addChild(Statement());
+        localTree->addChild(StatementList());
     }
     else if (currentToken.type == "NEWLINE")
     {
@@ -250,65 +343,77 @@ void Parser::StatementList()
     // }
     if (debug)
         cout << "(CLOSE) StatementList\n";
+    return localTree;
 }
 
-void Parser::Statement()
+AST Parser::Statement()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
     if (debug)
         cout << "(OPEN) Statement\n";
 
     if (currentToken.value == "pass")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "pass");
         matchValue("pass");
     }
     else if (currentToken.value == "return")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "return");
         matchValue("return");
-        ReturnExpr();
+        localTree->addChild(ReturnExpr());
     }
     else if (currentToken.value == "if")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "if");
         matchValue("if");
-        Expr();
+        localTree->addChild(Expr());
         matchValue(":");
-        Block();
-        ElifList();
-        Else();
+        localTree->addChild(Block());
+        localTree->addChild(ElifList());
+        localTree->addChild(Else());
     }
     else if (currentToken.value == "while")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "while");
         matchValue("while");
-        Expr();
+        localTree->addChild(Expr());
         matchValue(":");
-        Block();
+        localTree->addChild(Block());
     }
     else if (currentToken.value == "for")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "for");
         matchValue("for");
+        localTree->addChild(ASTNode::GetNewInstance(ASTNodeType::Id, currentToken.value));
         matchType("ID");
         matchValue("in");
-        Expr();
+        localTree->addChild(Expr());
         matchValue(":");
-        Block();
+        localTree->addChild(Block());
     }
     else
     {
-        SimpleStatement();
+        localTree->addChild(SimpleStatement());
         matchType("NEWLINE");
     }
     if (debug)
         cout << "(CLOSE) Statement\n";
+    return localTree;
 }
 
-void Parser::ElifList()
+AST Parser::ElifList()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) ElifList\n";
 
     if (currentToken.value == "elif")
     {
-        Elif();
-        ElifList();
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "elif");
+        localTree->addChild(Elif());
+        localTree->addChild(ElifList());
     }
     else
     {
@@ -316,31 +421,40 @@ void Parser::ElifList()
     }
     if (debug)
         cout << "(CLOSE) ElifList\n";
+    return localTree;
 }
 
-void Parser::Elif()
+AST Parser::Elif()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) Elif\n";
 
+    localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "elif");
+
     matchValue("elif");
-    Expr();
+    localTree->addChild(Expr());
     matchValue(":");
-    Block();
+    localTree->addChild(Block());
     if (debug)
         cout << "(CLOSE) Elif\n";
+    return localTree;
 }
 
-void Parser::Else()
+AST Parser::Else()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) Else\n";
 
     if (currentToken.value == "else")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "else");
         matchValue("else");
         matchValue(":");
-        Block();
+        localTree->addChild(Block());
     }
     else
     {
@@ -348,107 +462,148 @@ void Parser::Else()
     }
     if (debug)
         cout << "(CLOSE) Else\n";
+    return localTree;
 }
 
-void Parser::SimpleStatement()
+AST Parser::SimpleStatement()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) SimpleStatement\n";
-    if (
-        (currentToken.value == "(") || (currentToken.type == "ID") ||
+    if ((currentToken.value == "(") || (currentToken.value == "[") ||
         (currentToken.value == "pass") || (currentToken.value == "return") ||
         (currentToken.value == "-") || (currentToken.value == "None") ||
-        (currentToken.value == "True") || (currentToken.value == "False") ||
-        (currentToken.type == "LITNUM") || (currentToken.type == "LITSTR") ||
-        (currentToken.value == "["))
+        (currentToken.value == "True") || (currentToken.value == "False"))
     {
-        Expr();
-        SSTail();
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, currentToken.value);
+        localTree->addChild(Expr());
+        auto SSTailNode = SSTail();
+        SSTailNode->addChild(localTree);
+        return SSTailNode;
+    }
+
+    if ((currentToken.type == "ID") || (currentToken.type == "LITNUM") || (currentToken.type == "LITSTR"))
+    {
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, currentToken.type);
+        localTree->addChild(Expr());
+        auto SSTailNode = SSTail();
+        SSTailNode->addChild(localTree);
+        return SSTailNode;
     }
     if (debug)
         cout << "(CLOSE) SimpleStatement\n";
+    return localTree;
 }
 
-void Parser::SSTail()
+AST Parser::SSTail()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) SSTail\n";
 
     if (currentToken.value == "=")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, "=");
+
         matchValue("=");
-        Expr();
+        localTree->addChild(Expr());
     }
     if (debug)
         cout << "(CLOSE) SSTail\n";
+    return localTree;
 }
 
-void Parser::ReturnExpr()
+AST Parser::ReturnExpr()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
     if (debug)
         cout << "(OPEN) ReturnExpr\n";
 
     if (
-        (currentToken.value == "(") || (currentToken.type == "ID") ||
+        (currentToken.value == "(") || (currentToken.value == "False") ||
         (currentToken.value == "-") || (currentToken.value == "None") ||
-        (currentToken.value == "True") || (currentToken.value == "False") ||
-        (currentToken.type == "LITNUM") || (currentToken.type == "LITSTR"))
+        (currentToken.value == "True"))
     {
-        Expr();
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::Default, currentToken.value);
+
+        localTree->addChild(Expr());
+    }
+    if ((currentToken.type == "ID") || (currentToken.type == "LITNUM") || (currentToken.type == "LITSTR"))
+    {
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::Default, currentToken.value);
+        localTree->addChild(Expr());
     }
     if (debug)
         cout << "(CLOSE) ReturnExpr\n";
+    return localTree;
 }
 
-void Parser::Expr()
+AST Parser::Expr()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
     if (debug)
         cout << "(OPEN) Expr\n";
 
-    orExpr();
-    ExprPrime();
+    localTree->addChild(orExpr());
+    localTree->addChild(ExprPrime());
+
     if (debug)
         cout << "(CLOSE) Expr\n";
+    return localTree;
 }
 
-void Parser::ExprPrime()
+AST Parser::ExprPrime()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) ExprPrime\n";
 
     if (currentToken.value == "if")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "if");
         matchValue("if");
-        andExpr();
+        localTree->addChild(andExpr());
         matchValue("else");
-        andExpr();
-        ExprPrime();
+        localTree->addChild(andExpr());
+        localTree->addChild(ExprPrime());
     }
     if (debug)
         cout << "(CLOSE) ExprPrime\n";
+    return localTree;
 }
 
-void Parser::orExpr()
+AST Parser::orExpr()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) orExpr\n";
 
-    andExpr();
-    orExprPrime();
+    localTree->addChild(andExpr());
+    localTree->addChild(orExprPrime());
+
     if (debug)
         cout << "(CLOSE) orExpr\n";
+    return localTree;
 }
 
-void Parser::orExprPrime()
+AST Parser::orExprPrime()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) orExprPrime\n";
 
     if (currentToken.value == "or")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "or");
+
         matchValue("or");
-        andExpr();
-        orExprPrime();
+        localTree->addChild(andExpr());
+        localTree->addChild(orExprPrime());
     }
     else
     {
@@ -456,78 +611,108 @@ void Parser::orExprPrime()
     }
     if (debug)
         cout << "(CLOSE) orExprPrime\n";
+    return localTree;
 }
 
-void Parser::andExpr()
+AST Parser::andExpr()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) andExpr\n";
 
-    notExpr();
-    andExprPrime();
+    localTree->addChild(notExpr());
+    localTree->addChild(andExprPrime());
+
     if (debug)
         cout << "(CLOSE) andExpr\n";
+    return localTree;
 }
 
-void Parser::andExprPrime()
+AST Parser::andExprPrime()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) andExprPrime\n";
 
     if (currentToken.value == "and")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "and");
+
         matchValue("and");
-        notExpr();
-        andExprPrime();
+        localTree->addChild(notExpr());
+        localTree->addChild(andExprPrime());
     }
     if (debug)
         cout << "(CLOSE) andExprPrime\n";
+    return localTree;
 }
 
-void Parser::notExpr()
+AST Parser::notExpr()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) notExpr\n";
 
     if (currentToken.value == "not")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "not");
+
         matchValue("not");
     }
-    CompExpr();
-    notExprPrime();
+    localTree->addChild(CompExpr());
+    localTree->addChild(notExprPrime());
+
     if (debug)
         cout << "(CLOSE) notExpr\n";
+    return localTree;
 }
 
-void Parser::notExprPrime()
+AST Parser::notExprPrime()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) notExprPrime\n";
 
     // Regla epsilon
     if (currentToken.value == "not")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, "not");
+
         matchValue("not");
-        CompExpr();
-        notExprPrime();
+        localTree->addChild(CompExpr());
+        localTree->addChild(notExprPrime());
     }
     if (debug)
         cout << "(CLOSE) notExprPrime\n";
+    return localTree;
 }
 
-void Parser::CompExpr()
+AST Parser::CompExpr()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) CompExpr\n";
 
-    IntExpr();
-    CompExprPrime();
+    auto IntExprNode = IntExpr();
+    auto CompExprPrimeNode = CompExprPrime();
+
+    CompExprPrimeNode->addChild(IntExprNode);
+    localTree = CompExprPrimeNode;
+
     if (debug)
         cout << "(CLOSE) CompExpr\n";
+    return localTree;
 }
 
-void Parser::CompExprPrime()
+AST Parser::CompExprPrime()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) CompExprPrime\n";
 
@@ -537,40 +722,55 @@ void Parser::CompExprPrime()
         currentToken.value == "<=" || currentToken.value == ">=" ||
         currentToken.value == "is")
     {
-        CompOp();
-        IntExpr();
-        CompExprPrime();
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, currentToken.value);
+        localTree = CompOp();
+        localTree->addChild(IntExpr());
+        localTree->addChild(CompExprPrime());
     }
     if (debug)
         cout << "(CLOSE) CompExprPrime\n";
+    return localTree;
 }
 
-void Parser::IntExpr()
+AST Parser::IntExpr()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) IntExpr\n";
 
-    Term();
-    IntExprPrime();
+    auto TermNode = Term();
+    auto IntExprPrimeNode = IntExprPrime();
+
+    IntExprPrimeNode->addChild(TermNode);
+    localTree = IntExprPrimeNode;
+
     if (debug)
         cout << "(CLOSE) IntExpr\n";
+    return localTree;
 }
-void Parser::IntExprPrime()
+AST Parser::IntExprPrime()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) IntExprPrime\n";
 
     if (currentToken.value == "+")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, currentToken.value);
+
         matchValue("+");
-        Term();
-        IntExprPrime();
+        localTree->addChild(Term());
+        localTree->addChild(IntExprPrime());
     }
     else if (currentToken.value == "-")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, currentToken.value);
+
         matchValue("-");
-        Term();
-        IntExprPrime();
+        localTree->addChild(Term());
+        localTree->addChild(IntExprPrime());
     }
     else
     {
@@ -578,41 +778,56 @@ void Parser::IntExprPrime()
     }
     if (debug)
         cout << "(CLOSE) IntExprPrime\n";
+    return localTree;
 }
 
-void Parser::Term()
+AST Parser::Term()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) Term\n";
+    auto FactorNode = Factor();
+    auto TermPrimeNode = TermPrime();
 
-    Factor();
-    TermPrime();
+    TermPrimeNode->addChild(FactorNode);
+    localTree = TermPrimeNode;
+
     if (debug)
         cout << "(CLOSE) Term\n";
+    return localTree;
 }
 
-void Parser::TermPrime()
+AST Parser::TermPrime()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) TermPrime\n";
 
     if (currentToken.value == "*")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, currentToken.value);
+
         matchValue("*");
-        Factor();
-        TermPrime();
+        localTree->addChild(Factor());
+        localTree->addChild(TermPrime());
     }
     else if (currentToken.value == "//")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, currentToken.value);
+
         matchValue("//");
-        Factor();
-        TermPrime();
+        localTree->addChild(Factor());
+        localTree->addChild(TermPrime());
     }
     else if (currentToken.value == "%")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, currentToken.value);
+
         matchValue("%");
-        Factor();
-        TermPrime();
+        localTree->addChild(Factor());
+        localTree->addChild(TermPrime());
     }
     else
     {
@@ -620,35 +835,47 @@ void Parser::TermPrime()
     }
     if (debug)
         cout << "(CLOSE) TermPrime\n";
+    return localTree;
 }
 
-void Parser::Factor()
+AST Parser::Factor()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
+
         cout << "(OPEN) Factor\n";
 
     if (currentToken.value == "-")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, currentToken.value);
+
         matchValue("-");
-        Factor();
+        localTree->addChild(Factor());
     }
     else if (currentToken.type == "ID")
     {
-        Name();
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::Id, currentToken.value);
+        localTree->addChild(Name());
     }
-    else if (currentToken.value == "None" || currentToken.value == "True" || currentToken.value == "False" ||
-             currentToken.type == "LITNUM" || currentToken.type == "LITSTR")
+    else if (currentToken.value == "None" || currentToken.value == "True" || currentToken.value == "False")
     {
-        Literal();
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, currentToken.value);
+        localTree->addChild(Literal());
+    }
+    else if (currentToken.type == "LITNUM" || currentToken.type == "LITSTR")
+    {
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::DataType, currentToken.type);
+        localTree->addChild(Literal());
     }
     else if (currentToken.value == "[")
     {
-        List();
+        localTree->addChild(List());
     }
     else if (currentToken.value == "(")
     {
         matchValue("(");
-        Expr();
+        localTree->addChild(Expr());
         matchValue(")");
     }
     else
@@ -667,33 +894,41 @@ void Parser::Factor()
     }
     if (debug)
         cout << "(CLOSE) Factor\n";
+    return localTree;
 }
 
-void Parser::Name()
+AST Parser::Name()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) Name\n";
 
+    localTree = ASTNode::GetNewInstance(ASTNodeType::Id, currentToken.value);
     matchType("ID");
-    NameTail();
+    localTree->addChild(NameTail());
+
     if (debug)
         cout << "(CLOSE) Name\n";
+    return localTree;
 }
 
-void Parser::NameTail()
+AST Parser::NameTail()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) NameTail\n";
 
     if (currentToken.value == "(")
     {
         matchValue("(");
-        ExprList();
+        localTree->addChild(ExprList());
         matchValue(")");
     }
     else if (currentToken.value == "[")
     {
-        List();
+        localTree->addChild(List());
     }
     else
     {
@@ -701,16 +936,25 @@ void Parser::NameTail()
     }
     if (debug)
         cout << "(CLOSE) NameTail\n";
+    return localTree;
 }
 
-void Parser::Literal()
+AST Parser::Literal()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) Literal\n";
 
-    if (currentToken.value == "None" || currentToken.value == "True" || currentToken.value == "False" ||
-        currentToken.type == "LITNUM" || currentToken.type == "LITSTR")
+    if (currentToken.value == "None" || currentToken.value == "True" || currentToken.value == "False")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, currentToken.value);
+        consume();
+    }
+    else if (currentToken.type == "LITNUM" || currentToken.type == "LITSTR")
+    {
+
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, currentToken.value);
         consume();
     }
     else
@@ -728,35 +972,47 @@ void Parser::Literal()
     }
     if (debug)
         cout << "(CLOSE) Literal\n";
+    return localTree;
 }
 
-void Parser::List()
+AST Parser::List()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) List\n";
 
     matchValue("[");
-    ExprList();
+    localTree->addChild(ExprList());
     matchValue("]");
     if (debug)
         cout << "(CLOSE) List\n";
+    return localTree;
 }
 
-void Parser::ExprList()
+AST Parser::ExprList()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) ExprList\n";
 
     // if (currentToken.value != "]")
     if (
-        (currentToken.value == "(") || (currentToken.type == "ID") ||
+        (currentToken.value == "(") || (currentToken.value == "False") ||
         (currentToken.value == "-") || (currentToken.value == "None") ||
-        (currentToken.value == "True") || (currentToken.value == "False") ||
-        (currentToken.type == "LITNUM") || (currentToken.type == "LITSTR"))
+        (currentToken.value == "True"))
     {
-        // {
-        Expr();
-        ExprListTail();
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Keyword, currentToken.value);
+        localTree->addChild(Expr());
+        localTree->addChild(ExprListTail());
+    }
+    else if ((currentToken.type == "ID") || (currentToken.type == "LITNUM") || (currentToken.type == "LITSTR"))
+    {
+
+        // localTree = ASTNode::GetNewInstance(ASTNodeType::DataType, currentToken.value);
+        localTree->addChild(Expr());
+        localTree->addChild(ExprListTail());
     }
     else
     {
@@ -764,18 +1020,21 @@ void Parser::ExprList()
     }
     if (debug)
         cout << "(CLOSE) ExprList\n";
+    return localTree;
 }
 
-void Parser::ExprListTail()
+AST Parser::ExprListTail()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) ExprListTail\n";
 
     if (currentToken.value == ",")
     {
         matchValue(",");
-        Expr();
-        ExprListTail();
+        localTree->addChild(Expr());
+        localTree->addChild(ExprListTail());
     }
     else
     {
@@ -783,16 +1042,20 @@ void Parser::ExprListTail()
     }
     if (debug)
         cout << "(CLOSE) ExprListTail\n";
+    return localTree;
 }
 
-void Parser::CompOp()
+AST Parser::CompOp()
 {
+    auto localTree = ASTNode::GetNewInstance(ASTNodeType::Default, "[empty]");
+
     if (debug)
         cout << "(OPEN) CompOp\n";
 
     if (currentToken.value == "==" || currentToken.value == "!=" || currentToken.value == "<" ||
         currentToken.value == ">" || currentToken.value == "<=" || currentToken.value == ">=" || currentToken.value == "is")
     {
+        localTree = ASTNode::GetNewInstance(ASTNodeType::Symbol, currentToken.value);
         consume();
     }
     else
@@ -810,14 +1073,21 @@ void Parser::CompOp()
     }
     if (debug)
         cout << "(CLOSE) CompOp\n";
+    return localTree;
 }
 
 // Función principal para iniciar el análisis sintáctico
 void Parser::parse()
 {
+    if (scanner.hasErrors())
+    {
+        msgGen.buildMsg(MessageType::INFO, "", "It's impossible to parse, the scanner threw errors :(.", 0, 0);
+        msgGen.printMessage();
+        return;
+    }
     msgGen.buildMsg(MessageType::INFO, "", "Start parsing...", 0, 0);
-    // if (debug)
     msgGen.printMessage();
+    // if (debug)
     Program();
 
     // Verificar si se han consumido todos los tokens
