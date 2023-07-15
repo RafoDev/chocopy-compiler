@@ -74,6 +74,26 @@ Captura de pantalla de la UI.
 
 ![Chocopy Banner](https://i.postimg.cc/6QqD5d07/usage-Console.png)
 
+# AST
+Se agregó una representación intermedia.
+Para el siguiente codigo:
+
+```python
+def foo (x:int, y:int) -> int:     
+	if x < y: 
+		return x
+	elif x > y:
+		return y+1
+	else:
+		return 0
+
+```
+
+Se genera el siguiente AST.
+
+![Ejemplo de AST](https://i.postimg.cc/Bvkn08pY/dot-format-txt.png)
+
+
 # CFG
 Gramática Libre de Contexto utilizada.
 ```plaintext

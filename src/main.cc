@@ -31,15 +31,10 @@ namespace fs = std::filesystem;
 vector<string> testFiles;
 void getTestFiles()
 {
-	string folderPath = "../tests"; // Reemplaza con la ruta de la carpeta deseada
-
-	for (const auto &entry : fs::directory_iterator(folderPath))
+	for (const auto &entry : fs::directory_iterator("../tests"))
 	{
 		if (entry.is_regular_file())
-		{
 			testFiles.push_back(entry.path().filename());
-			// std::cout << entry.path().filename() << std::endl;
-		}
 	}
 }
 

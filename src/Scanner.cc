@@ -266,12 +266,12 @@ void Scanner::storeLines(string filename)
 	file.close();
 }
 
+
 void Scanner::scan()
 {
 	int lineNumber = 1;
 
 	msgGen.buildMsg(MessageType::INFO, "", "Start scanning...", 0, 0);
-	// if (debug)
 	msgGen.printMessage();
 
 	priority_queue<int> indentStack;
@@ -279,7 +279,6 @@ void Scanner::scan()
 
 	for (const string &line : fileLines)
 	{
-		// cout << line.size() << " " << line << "\n";
 		bool onlySpacesOrTabs = scanEspacesTabs(line);
 		if (line.size() && !onlySpacesOrTabs)
 		{
@@ -325,7 +324,7 @@ void Scanner::scan()
 
 				if (pointer < endLine)
 				{
-
+					numCol = pointer;
 					currToken = getTokenUtil(line, pointer, endLine);
 
 					if (currToken.type == "COMMENT")
@@ -349,14 +348,15 @@ void Scanner::scan()
 						{
 							tmpPointer /= 4;
 						}
-
+						// cout<<"pointer: "<<pointer<<" numcol:"<<numCol<<'\n';
+						// cout<<"pointer: "<<pointer<<" col:"<<pointer-currToken.value.length()-1<<'\n';
 						if (currToken.type == "ERROR")
 						{
-							msgGen.buildMsg(MessageType::LEXICAL_ERROR, currToken.type, currToken.value, lineNumber, tmpPointer);
+							msgGen.buildMsg(MessageType::LEXICAL_ERROR, currToken.type, currToken.value, lineNumber, numCol);
 							errors.push_back(msgGen.getMessage());
 						}
 						else
-							msgGen.buildMsg(MessageType::DEBUG_SCANNER, currToken.type, currToken.value, lineNumber, tmpPointer);
+							msgGen.buildMsg(MessageType::DEBUG_SCANNER, currToken.type, currToken.value, lineNumber, numCol);
 
 						if (debug)
 							msgGen.printMessage();
@@ -426,4 +426,8 @@ MToken Scanner::getToken()
 		currTokens.pop();
 		return currToken;
 	}
+}
+
+bool Scanner::hasErrors(){
+	return !errors.empty();
 }

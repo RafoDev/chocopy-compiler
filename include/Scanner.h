@@ -25,6 +25,7 @@ private:
 	string filename;
 	queue<MToken> currTokens;
 	bool debug;
+	int numCol = 0;
 
 	// void showMessage(string type, string tokenType, string token, int lineNumber, int pointer);
 	char getChar(string line, int &pointer);
@@ -54,6 +55,7 @@ public:
 	}
 	void scan();
 	MToken getToken();
+	bool hasErrors();
 };
 
 #endif
